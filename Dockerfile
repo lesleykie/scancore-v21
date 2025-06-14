@@ -34,8 +34,15 @@ RUN echo "Building Next.js application..." && \
     npm run build || \
     (echo "Build failed" && ls -la && exit 1)
 
-# Create data directory
-RUN mkdir -p /app/data && \
+# Create data directory structure with proper permissions
+RUN mkdir -p /app/data/config && \
+    mkdir -p /app/data/logs && \
+    mkdir -p /app/data/temp && \
+    mkdir -p /app/uploads/modules && \
+    mkdir -p /app/uploads/themes && \
+    mkdir -p /app/uploads/temp && \
+    mkdir -p /app/modules && \
+    mkdir -p /app/themes && \
     chown -R node:node /app
 
 # Copy entrypoint script

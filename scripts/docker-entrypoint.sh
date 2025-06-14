@@ -3,15 +3,16 @@ set -e
 
 echo "=== ScanCore Initialization ==="
 
-# Create required directory structure
-echo "Creating directory structure..."
-mkdir -p /app/data/{config,logs,temp}
-mkdir -p /app/uploads/{modules,themes,temp}
-mkdir -p /app/modules
-mkdir -p /app/themes
+# Verify directory structure exists (should be created in Dockerfile)
+echo "Verifying directory structure..."
+ls -la /app/data/ || echo "Data directory not found"
+ls -la /app/uploads/ || echo "Uploads directory not found"
 
-# Set proper permissions
-chown -R node:node /app/data /app/uploads /app/modules /app/themes
+# Test write permissions
+echo "Testing write permissions..."
+touch /app/data/test-write || (echo "ERROR: Cannot write to /app/data" && exit 1)
+rm -f /app/data/test-write
+echo "✓ Write permissions OK"
 
 # Wait for database to be ready with better error handling
 echo "Waiting for database connection..."
@@ -23,7 +24,6 @@ until npx prisma db push --accept-data-loss 2>/dev/null; do
   if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
     echo "ERROR: Database connection failed after $MAX_RETRIES attempts"
     echo "Database URL: $DATABASE_URL"
-    echo "Checking database container status..."
     exit 1
   fi
   echo "Database not ready (attempt $RETRY_COUNT/$MAX_RETRIES), waiting 5 seconds..."
@@ -36,8 +36,6 @@ echo "✓ Database connected successfully"
 echo "Running database migrations..."
 if ! npx prisma db push; then
   echo "ERROR: Database migration failed"
-  echo "Prisma schema status:"
-  npx prisma db pull --print || echo "Could not pull schema"
   exit 1
 fi
 
@@ -60,7 +58,6 @@ fi
 
 echo "=== Starting Application ==="
 echo "Environment: $NODE_ENV"
-echo "Database URL: ${DATABASE_URL%@*}@***"
 echo "App URL: $NEXTAUTH_URL"
 echo "Debug Mode: $DEBUG_MODE"
 echo "=========================="
