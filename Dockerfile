@@ -20,19 +20,24 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+
+# Install dependencies with error handling
+RUN echo "Installing npm dependencies..." && \
+    npm install --verbose || (echo "NPM install failed. Package.json contents:" && cat package.json && exit 1)
+
+# Copy prisma schema
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci --only=production
+# Generate Prisma client with error handling
+RUN echo "Generating Prisma client..." && \
+    npx prisma generate || (echo "Prisma generate failed" && exit 1)
 
 # Copy application code
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
-
-# Build the application
-RUN npm run build
+# Build the application with error handling
+RUN echo "Building Next.js application..." && \
+    npm run build || (echo "Build failed. Checking for errors..." && ls -la && exit 1)
 
 # Create data directory and set permissions
 RUN mkdir -p /app/data && \
