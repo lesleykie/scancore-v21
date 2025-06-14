@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://scancore:${POSTGRES_PASSWORD:-scancore_password}@db:5432/scancore
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your-secret-key-change-this}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:8080}
+      - DEBUG_MODE=${DEBUG_MODE:-false}
+    volumes:
+      - ./docker-data/scancore:/app/data
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-scancore}
+      - POSTGRES_USER=${POSTGRES_USER:-scancore}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-scancore_password}
+    volumes:
+      - ./docker-data/scancore/database:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

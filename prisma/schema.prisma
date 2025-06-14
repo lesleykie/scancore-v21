@@ -1,0 +1,308 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// System Configuration
+model SystemConfig {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  type  String // 'string', 'number', 'boolean', 'json'
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("system_config")
+}
+
+// User Management
+model User {
+  id       String @id @default(cuid())
+  email    String @unique
+  name     String?
+  password String
+  role     UserRole @default(USER)
+  active   Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  inventoryItems InventoryItem[]
+  groups         GroupMember[]
+  auditLogs      AuditLog[]
+  
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  USER
+}
+
+// Product Information
+model Product {
+  id          String  @id @default(cuid())
+  barcode     String  @unique
+  name        String
+  description String?
+  brand       String?
+  category    String?
+  imageUrl    String?
+  
+  // External API data
+  apiSource   String? // 'openfoodfacts', 'upc', 'manual'
+  apiData     Json?   // Raw API response
+  verified    Boolean @default(false)
+  
+  // Product relationships
+  equivalentProducts ProductEquivalent[] @relation("MainProduct")
+  equivalentTo       ProductEquivalent[] @relation("EquivalentProduct")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  inventoryItems InventoryItem[]
+  
+  @@map("products")
+}
+
+// Product Equivalency
+model ProductEquivalent {
+  id String @id @default(cuid())
+  
+  mainProductId       String
+  equivalentProductId String
+  
+  mainProduct       Product @relation("MainProduct", fields: [mainProductId], references: [id], onDelete: Cascade)
+  equivalentProduct Product @relation("EquivalentProduct", fields: [equivalentProductId], references: [id], onDelete: Cascade)
+  
+  confidence Float @default(1.0) // For future AI scoring
+  notes      String?
+  
+  createdAt DateTime @default(now())
+  createdBy String
+  
+  @@unique([mainProductId, equivalentProductId])
+  @@map("product_equivalents")
+}
+
+// Groups (Location, Category, User, Custom)
+model Group {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  type        GroupType
+  color       String?   // For UI organization
+  
+  // Hierarchy support
+  parentId String?
+  parent   Group?  @relation("GroupHierarchy", fields: [parentId], references: [id])
+  children Group[] @relation("GroupHierarchy")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  members        GroupMember[]
+  inventoryItems InventoryItem[]
+  
+  @@map("groups")
+}
+
+enum GroupType {
+  LOCATION
+  CATEGORY
+  USER
+  CUSTOM
+}
+
+model GroupMember {
+  id String @id @default(cuid())
+  
+  userId  String
+  groupId String
+  role    GroupRole @default(MEMBER)
+  
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, groupId])
+  @@map("group_members")
+}
+
+enum GroupRole {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+// Inventory Management
+model InventoryItem {
+  id String @id @default(cuid())
+  
+  productId String
+  groupId   String
+  userId    String
+  
+  quantity        Int
+  minThreshold    Int?     // Minimum quantity alert
+  maxThreshold    Int?     // Maximum quantity alert
+  unit            String   @default("pieces")
+  
+  // Cost tracking
+  purchasePrice   Decimal? @db.Decimal(10, 2)
+  purchaseDate    DateTime?
+  supplier        String?
+  
+  // Expiration tracking
+  expirationDate  DateTime?
+  batchNumber     String?
+  
+  // Location details
+  location        String?  // Specific location within group
+  notes           String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  alerts InventoryAlert[]
+  
+  @@map("inventory_items")
+}
+
+// Alert System
+model InventoryAlert {
+  id String @id @default(cuid())
+  
+  inventoryItemId String
+  type            AlertType
+  message         String
+  threshold       Int?
+  currentValue    Int?
+  
+  sent      Boolean   @default(false)
+  sentAt    DateTime?
+  resolved  Boolean   @default(false)
+  resolvedAt DateTime?
+  
+  createdAt DateTime @default(now())
+  
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  
+  @@map("inventory_alerts")
+}
+
+enum AlertType {
+  LOW_STOCK
+  HIGH_STOCK
+  EXPIRING_SOON
+  EXPIRED
+  CUSTOM
+}
+
+// Module System
+model Module {
+  id String @id @default(cuid())
+  
+  name        String @unique
+  displayName String
+  description String?
+  version     String
+  author      String?
+  
+  enabled     Boolean @default(false)
+  installed   Boolean @default(false)
+  
+  // Module files and configuration
+  filePath    String? // Path to module files
+  configSchema Json?  // JSON schema for module configuration
+  config      Json?   // Current module configuration
+  
+  // Dependencies
+  dependencies String[] // Array of required module names
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("modules")
+}
+
+// Email Configuration
+model EmailConfig {
+  id String @id @default(cuid())
+  
+  provider    String // 'smtp', 'sendgrid', 'ses', etc.
+  host        String?
+  port        Int?
+  secure      Boolean @default(true)
+  username    String?
+  password    String?
+  apiKey      String?
+  
+  fromEmail   String
+  fromName    String
+  
+  active      Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("email_config")
+}
+
+// API Configuration for Product Lookups
+model ApiConfig {
+  id String @id @default(cuid())
+  
+  name        String @unique
+  displayName String
+  baseUrl     String
+  apiKey      String?
+  headers     Json?
+  
+  enabled     Boolean @default(true)
+  priority    Int     @default(0) // Higher priority = checked first
+  rateLimit   Int?    // Requests per minute
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("api_config")
+}
+
+// Audit Logging
+model AuditLog {
+  id String @id @default(cuid())
+  
+  userId    String?
+  action    String
+  resource  String
+  resourceId String?
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  
+  createdAt DateTime @default(now())
+  
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@map("audit_logs")
+}
