@@ -1,45 +1,40 @@
 FROM node:20-alpine
 
-# Install system dependencies for barcode scanning and image processing
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    cairo-dev \
-    jpeg-dev \
-    pango-dev \
-    musl-dev \
-    giflib-dev \
-    pixman-dev \
-    pangomm-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    curl
+# Install minimal system dependencies
+RUN apk add --no-cache curl
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with error handling
+# Install dependencies with better error handling
 RUN echo "Installing npm dependencies..." && \
-    npm install --verbose || (echo "NPM install failed. Package.json contents:" && cat package.json && exit 1)
+    npm install --verbose 2>&1 | tee /tmp/npm-install.log || \
+    (echo "=== NPM INSTALL FAILED ===" && \
+     echo "Package.json contents:" && cat package.json && \
+     echo "NPM install log:" && cat /tmp/npm-install.log && \
+     echo "Node version:" && node --version && \
+     echo "NPM version:" && npm --version && \
+     exit 1)
 
 # Copy prisma schema
 COPY prisma ./prisma/
 
-# Generate Prisma client with error handling
+# Generate Prisma client
 RUN echo "Generating Prisma client..." && \
-    npx prisma generate || (echo "Prisma generate failed" && exit 1)
+    npx prisma generate || \
+    (echo "Prisma generate failed" && exit 1)
 
 # Copy application code
 COPY . .
 
-# Build the application with error handling
+# Build the application
 RUN echo "Building Next.js application..." && \
-    npm run build || (echo "Build failed. Checking for errors..." && ls -la && exit 1)
+    npm run build || \
+    (echo "Build failed" && ls -la && exit 1)
 
-# Create data directory and set permissions
+# Create data directory
 RUN mkdir -p /app/data && \
     chown -R node:node /app
 

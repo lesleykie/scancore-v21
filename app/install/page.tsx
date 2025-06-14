@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { CheckCircle, Circle, AlertCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 
 interface InstallStep {
   id: string
@@ -27,15 +26,7 @@ export default function InstallPage() {
     adminName: "",
     adminPassword: "",
     appName: "ScanCore Inventory",
-    emailProvider: "smtp",
-    emailHost: "",
-    emailPort: "587",
-    emailUsername: "",
-    emailPassword: "",
-    fromEmail: "",
-    fromName: "ScanCore System",
   })
-  const { toast } = useToast()
 
   useEffect(() => {
     loadInstallationSteps()
@@ -47,15 +38,10 @@ export default function InstallPage() {
       const data = await response.json()
       setSteps(data)
 
-      // Find first incomplete step
       const firstIncomplete = data.findIndex((step: InstallStep) => !step.completed)
       setCurrentStep(firstIncomplete >= 0 ? firstIncomplete : 0)
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load installation steps",
-        variant: "destructive",
-      })
+      console.error("Failed to load installation steps:", error)
     } finally {
       setLoading(false)
     }
@@ -78,29 +64,15 @@ export default function InstallPage() {
       const result = await response.json()
 
       if (result.success) {
-        toast({
-          title: "Success",
-          description: `${steps[currentStep]?.title} completed successfully`,
-        })
-
-        // Reload steps and move to next
         await loadInstallationSteps()
         if (currentStep < steps.length - 1) {
           setCurrentStep(currentStep + 1)
         }
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Installation step failed",
-          variant: "destructive",
-        })
+        alert(`Error: ${result.error}`)
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Installation step failed",
-        variant: "destructive",
-      })
+      alert("Installation step failed")
     } finally {
       setInstalling(false)
     }
@@ -129,7 +101,7 @@ export default function InstallPage() {
           <CardHeader className="text-center">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
             <CardTitle>Installation Complete!</CardTitle>
-            <CardDescription>ScanCore has been successfully installed and configured.</CardDescription>
+            <CardDescription>ScanCore has been successfully installed.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button className="w-full" onClick={() => (window.location.href = "/")}>
@@ -146,7 +118,7 @@ export default function InstallPage() {
       <div className="max-w-4xl mx-auto px-4">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold">ScanCore Installation</h1>
-          <p className="text-muted-foreground mt-2">Let's get your inventory management system set up</p>
+          <p className="text-muted-foreground mt-2">Let's get your inventory system set up</p>
         </div>
 
         <div className="mb-8">
@@ -160,7 +132,6 @@ export default function InstallPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Steps sidebar */}
           <div className="lg:col-span-1">
             <Card>
               <CardHeader>
@@ -192,7 +163,6 @@ export default function InstallPage() {
             </Card>
           </div>
 
-          {/* Main installation form */}
           <div className="lg:col-span-2">
             {steps[currentStep] && (
               <Card>
@@ -233,72 +203,6 @@ export default function InstallPage() {
                           onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })}
                           placeholder="Strong password"
                         />
-                      </div>
-                    </div>
-                  )}
-
-                  {steps[currentStep].id === "email" && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="emailHost">SMTP Host</Label>
-                          <Input
-                            id="emailHost"
-                            value={formData.emailHost}
-                            onChange={(e) => setFormData({ ...formData, emailHost: e.target.value })}
-                            placeholder="smtp.gmail.com"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="emailPort">SMTP Port</Label>
-                          <Input
-                            id="emailPort"
-                            value={formData.emailPort}
-                            onChange={(e) => setFormData({ ...formData, emailPort: e.target.value })}
-                            placeholder="587"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="emailUsername">Username</Label>
-                          <Input
-                            id="emailUsername"
-                            value={formData.emailUsername}
-                            onChange={(e) => setFormData({ ...formData, emailUsername: e.target.value })}
-                            placeholder="your-email@gmail.com"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="emailPassword">Password</Label>
-                          <Input
-                            id="emailPassword"
-                            type="password"
-                            value={formData.emailPassword}
-                            onChange={(e) => setFormData({ ...formData, emailPassword: e.target.value })}
-                            placeholder="App password"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="fromEmail">From Email</Label>
-                          <Input
-                            id="fromEmail"
-                            value={formData.fromEmail}
-                            onChange={(e) => setFormData({ ...formData, fromEmail: e.target.value })}
-                            placeholder="noreply@yourcompany.com"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="fromName">From Name</Label>
-                          <Input
-                            id="fromName"
-                            value={formData.fromName}
-                            onChange={(e) => setFormData({ ...formData, fromName: e.target.value })}
-                            placeholder="ScanCore System"
-                          />
-                        </div>
                       </div>
                     </div>
                   )}

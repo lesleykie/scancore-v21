@@ -10,30 +10,13 @@ export interface InstallationStep {
 }
 
 export interface InstallationConfig {
-  database: {
-    host: string
-    port: number
-    database: string
-    username: string
-    password: string
-  }
   admin: {
     email: string
     name: string
     password: string
   }
-  email: {
-    provider: string
-    host?: string
-    port?: number
-    username?: string
-    password?: string
-    fromEmail: string
-    fromName: string
-  }
   app: {
     name: string
-    url: string
   }
 }
 
@@ -68,18 +51,6 @@ export class Installer {
         completed: false,
       },
       {
-        id: "email",
-        title: "Email Configuration",
-        description: "Configure email settings for notifications",
-        completed: false,
-      },
-      {
-        id: "apis",
-        title: "Product APIs",
-        description: "Configure product lookup services",
-        completed: false,
-      },
-      {
         id: "finalize",
         title: "Finalize Installation",
         description: "Complete the installation process",
@@ -87,7 +58,6 @@ export class Installer {
       },
     ]
 
-    // Check each step
     try {
       // Database check
       await this.prisma.$connect()
@@ -99,20 +69,8 @@ export class Installer {
       })
       steps[1].completed = adminCount > 0
 
-      // Email config check
-      const emailConfig = await this.prisma.emailConfig.findFirst({
-        where: { active: true },
-      })
-      steps[2].completed = !!emailConfig
-
-      // API config check
-      const apiConfig = await this.prisma.apiConfig.findFirst({
-        where: { enabled: true },
-      })
-      steps[3].completed = !!apiConfig
-
       // Final check
-      steps[4].completed = steps.slice(0, 4).every((step) => step.completed)
+      steps[2].completed = steps.slice(0, 2).every((step) => step.completed)
     } catch (error) {
       steps[0].error = "Database connection failed"
     }
@@ -133,13 +91,6 @@ export class Installer {
           if (!config.admin) throw new Error("Admin configuration required")
           return await this.createAdminUser(config.admin)
 
-        case "email":
-          if (!config.email) throw new Error("Email configuration required")
-          return await this.setupEmail(config.email)
-
-        case "apis":
-          return await this.setupDefaultAPIs()
-
         case "finalize":
           return await this.finalizeInstallation(config.app)
 
@@ -156,7 +107,6 @@ export class Installer {
 
   private async setupDatabase(): Promise<{ success: boolean; error?: string }> {
     try {
-      // Run database migrations
       await this.prisma.$executeRaw`SELECT 1`
       return { success: true }
     } catch (error) {
@@ -189,74 +139,15 @@ export class Installer {
     }
   }
 
-  private async setupEmail(email: InstallationConfig["email"]): Promise<{ success: boolean; error?: string }> {
-    try {
-      await this.prisma.emailConfig.create({
-        data: {
-          provider: email.provider,
-          host: email.host,
-          port: email.port,
-          username: email.username,
-          password: email.password,
-          fromEmail: email.fromEmail,
-          fromName: email.fromName,
-          active: true,
-        },
-      })
-
-      return { success: true }
-    } catch (error) {
-      return {
-        success: false,
-        error: "Failed to setup email configuration",
-      }
-    }
-  }
-
-  private async setupDefaultAPIs(): Promise<{ success: boolean; error?: string }> {
-    try {
-      // Setup OpenFoodFacts as default
-      await this.prisma.apiConfig.create({
-        data: {
-          name: "openfoodfacts",
-          displayName: "Open Food Facts",
-          baseUrl: "https://world.openfoodfacts.org/api/v0/product",
-          enabled: true,
-          priority: 1,
-        },
-      })
-
-      return { success: true }
-    } catch (error) {
-      return {
-        success: false,
-        error: "Failed to setup API configurations",
-      }
-    }
-  }
-
   private async finalizeInstallation(app?: InstallationConfig["app"]): Promise<{ success: boolean; error?: string }> {
     try {
-      // Set system configuration
       if (app) {
-        await this.prisma.systemConfig.createMany({
-          data: [
-            {
-              key: "app_name",
-              value: app.name,
-              type: "string",
-            },
-            {
-              key: "app_url",
-              value: app.url,
-              type: "string",
-            },
-            {
-              key: "installation_completed",
-              value: "true",
-              type: "boolean",
-            },
-          ],
+        await this.prisma.systemConfig.create({
+          data: {
+            key: "installation_completed",
+            value: "true",
+            type: "boolean",
+          },
         })
       }
 
