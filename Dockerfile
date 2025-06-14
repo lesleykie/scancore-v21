@@ -13,7 +13,8 @@ RUN apk add --no-cache \
     pixman-dev \
     pangomm-dev \
     libjpeg-turbo-dev \
-    freetype-dev
+    freetype-dev \
+    curl
 
 WORKDIR /app
 
@@ -33,9 +34,20 @@ RUN npx prisma generate
 # Build the application
 RUN npm run build
 
-# Create data directory
-RUN mkdir -p /app/data
+# Create data directory and set permissions
+RUN mkdir -p /app/data && \
+    chown -R node:node /app
+
+# Copy entrypoint script
+COPY scripts/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+USER node
 
 EXPOSE 3000
 
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:3000/api/health || exit 1
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["npm", "start"]
