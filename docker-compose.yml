@@ -11,10 +11,10 @@ services:
       - DEBUG_MODE=${DEBUG_MODE:-false}
       - FIRST_INSTALL=${FIRST_INSTALL:-true}
     volumes:
-      - ${DATA_PATH:- /docker-data/scancorev20}/app:/app/data:rw
-      - ${DATA_PATH:- /docker-data/scancorev20}/uploads:/app/uploads:rw
-      - ${DATA_PATH:- /docker-data/scancorev20}/modules:/app/modules:rw
-      - ${DATA_PATH:- /docker-data/scancorev20}/themes:/app/themes:rw
+      - ${DATA_PATH:-./docker-data/scancorev20}/app:/app/data
+      - ${DATA_PATH:-./docker-data/scancorev20}/uploads:/app/uploads
+      - ${DATA_PATH:-./docker-data/scancorev20}/modules:/app/modules
+      - ${DATA_PATH:-./docker-data/scancorev20}/themes:/app/themes
     depends_on:
       db:
         condition: service_healthy
@@ -35,7 +35,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-scancore}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-scancore_password}
     volumes:
-      - ${DATA_PATH:- /docker-data/scancorev20}/database:/var/lib/postgresql/data
+      - ${DATA_PATH:-./docker-data/scancorev20}/database:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-scancore} -d ${POSTGRES_DB:-scancore}"]
@@ -46,7 +46,7 @@ services:
   adminer:
     image: adminer:latest
     ports:
-      - "${ADMINER_PORT:-8081}:8080"
+      - "${ADMINER_PORT:-8082}:8080"
     depends_on:
       db:
         condition: service_healthy
