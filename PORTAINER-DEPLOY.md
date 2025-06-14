@@ -5,7 +5,7 @@
 1. **In Portainer, go to Stacks → Add Stack**
 
 2. **Choose "Repository" and enter:**
-   - Repository URL: `https://github.com/your-username/scancore-inventory`
+   - Repository URL: `https://github.com/[YOUR-USERNAME]/[YOUR-REPO-NAME]`
    - Compose path: `docker-compose.yml`
 
 3. **Set Environment Variables:**
@@ -17,6 +17,7 @@
    ADMINER_PORT=8081
    DEBUG_MODE=true
    NEXTAUTH_URL=http://localhost:8088
+   DATA_PATH=./docker-data/scancorev20
    \`\`\`
 
 4. **Deploy the stack**
@@ -27,12 +28,30 @@
 
 ## Data Storage
 
-All persistent data is stored in `./docker-data/scancore/`:
+All persistent data is stored in `${DATA_PATH}` (default: `./docker-data/scancorev20/`):
 - `database/` - PostgreSQL data
 - `app/` - Application data and configuration  
 - `uploads/` - Module uploads and temporary files
 - `modules/` - Installed plugin modules
 - `themes/` - Theme files
+
+## Version Management
+
+To run multiple versions or upgrade:
+
+**For testing v21:**
+\`\`\`
+DATA_PATH=./docker-data/scancorev21
+APP_PORT=8089
+DB_PORT=5434
+ADMINER_PORT=8082
+\`\`\`
+
+**For production upgrade:**
+1. Stop current version
+2. Change `DATA_PATH=./docker-data/scancorev21`
+3. Deploy new version
+4. Migrate data if needed
 
 ## Access Points
 
