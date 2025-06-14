@@ -11,10 +11,10 @@ services:
       - DEBUG_MODE=${DEBUG_MODE:-false}
       - FIRST_INSTALL=${FIRST_INSTALL:-true}
     volumes:
-      - ${DATA_PATH:-./docker-data/scancorev20}/app:/app/data
-      - ${DATA_PATH:-./docker-data/scancorev20}/uploads:/app/uploads
-      - ${DATA_PATH:-./docker-data/scancorev20}/modules:/app/modules
-      - ${DATA_PATH:-./docker-data/scancorev20}/themes:/app/themes
+      - ${DATA_PATH:-./docker-data/scancorev20}/app:/app/data:rw
+      - ${DATA_PATH:-./docker-data/scancorev20}/uploads:/app/uploads:rw
+      - ${DATA_PATH:-./docker-data/scancorev20}/modules:/app/modules:rw
+      - ${DATA_PATH:-./docker-data/scancorev20}/themes:/app/themes:rw
     depends_on:
       db:
         condition: service_healthy
